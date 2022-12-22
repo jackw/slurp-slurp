@@ -1,0 +1,15 @@
+{
+  "name": "plugin-slurper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jack Westbrook",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.2.1",
+    "jszip": "^3.10.1"
+  }
+}
