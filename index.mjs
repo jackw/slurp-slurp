@@ -5,7 +5,7 @@ import axios from "axios";
 import jszip from "jszip";
 
 const apiUrl =
-  "https://grafana.com/api/plugins?orderBy=popularity&direction=desc&typeCodeIn[]=panel";
+  "https://grafana.com/api/plugins?orderBy=popularity&direction=desc&internal=false";
 const downloadDir = path.resolve(os.tmpdir(), "plugin-slurper");
 const pluginBlackList = [
   "alertlist",
@@ -37,27 +37,56 @@ const filteredPlugins = panelPlugins.items.filter(
 if (!fs.existsSync(downloadDir)) {
   fs.mkdirSync(downloadDir);
 }
+console.log(`Downloads dir: ${downloadDir}`);
 
 for await (const plugin of filteredPlugins) {
-  let downloadUrl;
-  if (Object.keys(plugin.packages).length == 0) {
-    const downloadLink = plugin.links.filter((link) => link.rel === "download");
-    downloadUrl = downloadLink.length
-      ? `https://grafana.com/api${downloadLink[0].href}`
-      : "";
-  } else {
-    downloadUrl = `https://grafana.com${plugin.packages.any.downloadUrl}`;
-  }
-  if (downloadUrl) {
-    const fileName = `${plugin.slug}-${plugin.version}.zip`;
-    const location = path.resolve(downloadDir, fileName);
-    await downloadZip(downloadUrl, location);
-    await sleep(500);
-    await extractPlugin(fileName, plugin.slug, plugin.version);
+  try {
+    let downloadUrl = getDownloadUrl(plugin);
+
+    if (downloadUrl) {
+      const fileName = `${plugin.slug}-${plugin.version}.zip`;
+      const location = path.resolve(downloadDir, fileName);
+
+      if (fs.existsSync(location)) {
+        console.log(
+          "Successfully downloaded plugin",
+          plugin.slug,
+          plugin.version
+        );
+        continue;
+      }
+
+      await downloadZip(downloadUrl, location);
+      await extractPlugin(fileName, plugin.slug, plugin.version);
+      console.log(
+        "Successfully downloaded plugin",
+        plugin.slug,
+        plugin.version
+      );
+    }
+  } catch (error) {
+    console.log("Error downloading plugin", plugin.slug, plugin.version);
+    console.error(error);
   }
 }
 
 console.log(`Downloads can be found in: ${downloadDir}`);
+
+function getDownloadUrl(plugin) {
+  if (plugin.packages.any) {
+    return `https://grafana.com${plugin.packages.any.downloadUrl}`;
+  }
+
+  if (plugin.packages["linux-amd64"]) {
+    return `https://grafana.com${plugin.packages["linux-amd64"].downloadUrl}`;
+  }
+
+  if (plugin.packages["darwin-amd64"]) {
+    return `https://grafana.com${plugin.packages["darwin-amd64"].downloadUrl}`;
+  }
+
+  return "";
+}
 
 async function downloadZip(downloadUrl, location) {
   const writer = fs.createWriteStream(location);
@@ -104,10 +133,4 @@ async function extractPlugin(zipFileName, slug, version) {
       );
     }
   }
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }

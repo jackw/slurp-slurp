@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.2.1",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "source-map": "^0.7.4"
   }
 }
